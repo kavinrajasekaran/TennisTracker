@@ -49,7 +49,7 @@ A comprehensive iOS app for tracking tennis matches with detailed statistics, pl
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/TennisTracker.git
+   git clone https://github.com/kavinrajasekaran/TennisTracker.git
    cd TennisTracker
    ```
 
@@ -57,7 +57,18 @@ A comprehensive iOS app for tracking tennis matches with detailed statistics, pl
    - Create a new Firebase project at [Firebase Console](https://console.firebase.google.com)
    - Enable Firestore Database
    - Enable Anonymous Authentication
-   - Download `GoogleService-Info.plist` and add it to your Xcode project
+   - Download `GoogleService-Info.plist` from your Firebase project
+   
+   **⚠️ IMPORTANT: Security Setup**
+   - Copy `GoogleService-Info-template.plist` to `GoogleService-Info.plist`
+   - Replace all placeholder values with your actual Firebase configuration
+   - **NEVER commit the real `GoogleService-Info.plist` to git** (it's already in .gitignore)
+   
+   ```bash
+   # Copy the template and edit with your Firebase config
+   cp GoogleService-Info-template.plist GoogleService-Info.plist
+   # Edit GoogleService-Info.plist with your actual Firebase values
+   ```
 
 3. **Firestore Rules**
    Configure your Firestore rules to allow anonymous access:
@@ -74,6 +85,7 @@ A comprehensive iOS app for tracking tennis matches with detailed statistics, pl
 
 4. **Build and Run**
    - Open `TennisTracker.xcodeproj` in Xcode
+   - Ensure `GoogleService-Info.plist` is added to your Xcode project
    - Select your target device/simulator
    - Build and run (⌘+R)
 
@@ -88,6 +100,10 @@ A comprehensive iOS app for tracking tennis matches with detailed statistics, pl
 6. Select court surface and add optional location/notes
 7. Choose the winner and save
 
+### Quick Testing
+- In debug mode, use the "🐛 Quick Test Setup" button for instant valid match setup
+- Check the "Validation Status" section to see real-time validation feedback
+
 ### Viewing Statistics
 1. Go to the "Leaderboard" tab
 2. Browse player rankings and statistics
@@ -99,6 +115,18 @@ A comprehensive iOS app for tracking tennis matches with detailed statistics, pl
 - Use the "Debug" tab to test Firebase connectivity
 - Check authentication status
 - Test database operations
+
+## Security & Deployment
+
+### For Contributors
+- **Never commit `GoogleService-Info.plist`** - use the template instead
+- The real config file is automatically ignored by git
+- Each developer needs their own Firebase project for development
+
+### For Public Repositories
+- Firebase configuration is kept private via .gitignore
+- Template file shows required structure without exposing keys
+- Production deployments use separate Firebase projects
 
 ## Data Models
 
@@ -137,10 +165,16 @@ Run tests with: `⌘+U` in Xcode
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Set up your own Firebase project (don't use production config)
+3. Create a feature branch (`git checkout -b feature/amazing-feature`)
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+**Security Guidelines:**
+- Never commit real Firebase configurations
+- Use the template file for setup instructions
+- Each contributor should use their own Firebase project
 
 ## Future Enhancements
 
@@ -162,7 +196,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you encounter any issues or have questions:
 - Create an issue on GitHub
 - Check the Debug tab in the app for connectivity issues
-- Ensure Firebase is properly configured
+- Ensure Firebase is properly configured with your own project
+
+## Security Notice
+
+This project uses Firebase for backend services. The `GoogleService-Info.plist` file contains sensitive configuration data and is excluded from version control. Use the provided template to set up your own Firebase configuration.
 
 ## Acknowledgments
 

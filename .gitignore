@@ -91,6 +91,17 @@ iOSInjectionProject/
 
 # Firebase config (IMPORTANT: Keep this private!)
 GoogleService-Info.plist
+google-services.json
+
+# Environment and secrets
+.env
+.env.local
+.env.production
+*.key
+*.p8
+*.p12
+*.mobileprovision
+*.certSigningRequest
 
 # OS generated files
 .DS_Store
