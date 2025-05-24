@@ -6,6 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		FD350BD12DC4918800316A41 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = FD350BD02DC4918800316A41 /* GoogleService-Info.plist */; };
+		FD350BD42DC492A900316A41 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FD350BD32DC492A900316A41 /* FirebaseAnalytics */; };
+		FD350BD62DC492A900316A41 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FD350BD52DC492A900316A41 /* FirebaseAuth */; };
+		FD350BD82DC492A900316A41 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FD350BD72DC492A900316A41 /* FirebaseCore */; };
+		FD350BDA2DC492A900316A41 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = FD350BD92DC492A900316A41 /* FirebaseCrashlytics */; };
+		FD350BDC2DC492A900316A41 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = FD350BDB2DC492A900316A41 /* FirebaseFirestore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		FD350BB42DC490E900316A41 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +36,7 @@
 		FD350BA32DC490E800316A41 /* TennisTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TennisTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD350BB32DC490E900316A41 /* TennisTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TennisTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD350BBD2DC490E900316A41 /* TennisTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TennisTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD350BD02DC4918800316A41 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +62,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FD350BD42DC492A900316A41 /* FirebaseAnalytics in Frameworks */,
+				FD350BDA2DC492A900316A41 /* FirebaseCrashlytics in Frameworks */,
+				FD350BD82DC492A900316A41 /* FirebaseCore in Frameworks */,
+				FD350BDC2DC492A900316A41 /* FirebaseFirestore in Frameworks */,
+				FD350BD62DC492A900316A41 /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +90,7 @@
 		FD350B9A2DC490E800316A41 = {
 			isa = PBXGroup;
 			children = (
+				FD350BD02DC4918800316A41 /* GoogleService-Info.plist */,
 				FD350BA52DC490E800316A41 /* TennisTracker */,
 				FD350BB62DC490E900316A41 /* TennisTrackerTests */,
 				FD350BC02DC490E900316A41 /* TennisTrackerUITests */,
@@ -112,6 +128,11 @@
 			);
 			name = TennisTracker;
 			packageProductDependencies = (
+				FD350BD32DC492A900316A41 /* FirebaseAnalytics */,
+				FD350BD52DC492A900316A41 /* FirebaseAuth */,
+				FD350BD72DC492A900316A41 /* FirebaseCore */,
+				FD350BD92DC492A900316A41 /* FirebaseCrashlytics */,
+				FD350BDB2DC492A900316A41 /* FirebaseFirestore */,
 			);
 			productName = TennisTracker;
 			productReference = FD350BA32DC490E800316A41 /* TennisTracker.app */;
@@ -195,6 +216,9 @@
 			);
 			mainGroup = FD350B9A2DC490E800316A41;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				FD350BD22DC492A900316A41 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FD350BA42DC490E800316A41 /* Products */;
 			projectDirPath = "";
@@ -212,6 +236,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FD350BD12DC4918800316A41 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -593,6 +618,45 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		FD350BD22DC492A900316A41 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FD350BD32DC492A900316A41 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FD350BD22DC492A900316A41 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		FD350BD52DC492A900316A41 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FD350BD22DC492A900316A41 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		FD350BD72DC492A900316A41 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FD350BD22DC492A900316A41 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		FD350BD92DC492A900316A41 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FD350BD22DC492A900316A41 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		FD350BDB2DC492A900316A41 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FD350BD22DC492A900316A41 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = FD350B9B2DC490E800316A41 /* Project object */;
 }
