@@ -30,28 +30,6 @@ class MatchViewModel: ObservableObject {
     
     init() {
         loadAvailablePlayers()
-        // Set up a simple test match for easier debugging
-        setupQuickTestMatch()
-    }
-    
-    // Helper method to set up a quick test match
-    private func setupQuickTestMatch() {
-        #if DEBUG
-        // Delay to ensure the view is set up
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.team1Players[0] = "Player 1"
-            self.team2Players[0] = "Player 2"
-            self.sets[0].team1Games = "6"
-            self.sets[0].team2Games = "4"
-            self.winnerTeamIndex = 0
-            
-            // Force update tiebreak requirement
-            self.updateSetTiebreakRequirement(for: 0)
-            
-            print("🐛 Debug setup complete: t1='\(self.sets[0].team1Games)', t2='\(self.sets[0].team2Games)', tiebreak=\(self.sets[0].requiresTiebreak)")
-            print("🐛 Debug setup isValid: \(self.sets[0].isValid)")
-        }
-        #endif
     }
     
     // MARK: - Player Field Tracking
@@ -66,66 +44,34 @@ class MatchViewModel: ObservableObject {
         var team2Games: String = ""
         var team1TiebreakPoints: String = ""
         var team2TiebreakPoints: String = ""
-        var requiresTiebreak: Bool = false
+        
+        var requiresTiebreak: Bool {
+            guard let t1 = Int(team1Games), let t2 = Int(team2Games) else { return false }
+            return (t1 == 7 && t2 == 6) || (t1 == 6 && t2 == 7)
+        }
         
         var isValid: Bool {
-            guard let t1Games = Int(team1Games), let t2Games = Int(team2Games) else {
-                print("🐛 SetInput.isValid: Failed to parse games - t1: '\(team1Games)', t2: '\(team2Games)'")
-                return false
-            }
+            guard let t1 = Int(team1Games), let t2 = Int(team2Games) else { return false }
+            guard t1 != t2 && t1 >= 0 && t2 >= 0 && t1 <= 20 && t2 <= 20 else { return false }
             
-            // Basic validation - just check that games are reasonable numbers
-            guard t1Games >= 0 && t2Games >= 0 && t1Games <= 20 && t2Games <= 20 else {
-                print("🐛 SetInput.isValid: Games out of range - t1: \(t1Games), t2: \(t2Games)")
-                return false
-            }
-            
-            // Must have a winner (someone has more games)
-            guard t1Games != t2Games else {
-                print("🐛 SetInput.isValid: Tied games - t1: \(t1Games), t2: \(t2Games)")
-                return false
-            }
-            
-            // If tiebreak is required, validate tiebreak points
             if requiresTiebreak {
-                guard let t1TB = Int(team1TiebreakPoints), let t2TB = Int(team2TiebreakPoints) else {
-                    print("🐛 SetInput.isValid: Tiebreak required but invalid points - t1TB: '\(team1TiebreakPoints)', t2TB: '\(team2TiebreakPoints)'")
-                    return false
-                }
-                guard t1TB >= 0 && t2TB >= 0 && t1TB <= 50 && t2TB <= 50 else {
-                    print("🐛 SetInput.isValid: Tiebreak points out of range - t1TB: \(t1TB), t2TB: \(t2TB)")
-                    return false
-                }
+                guard let tb1 = Int(team1TiebreakPoints), let tb2 = Int(team2TiebreakPoints) else { return false }
+                guard tb1 >= 0 && tb2 >= 0 && tb1 <= 50 && tb2 <= 50 else { return false }
             }
             
-            print("🐛 SetInput.isValid: Valid set - t1: \(t1Games), t2: \(t2Games), tiebreak: \(requiresTiebreak)")
             return true
         }
         
         func toGameSet() -> GameSet? {
-            guard let t1Games = Int(team1Games), let t2Games = Int(team2Games) else {
-                print("🐛 SetInput.toGameSet: Failed to parse games - t1: '\(team1Games)', t2: '\(team2Games)'")
-                return nil
-            }
-            
-            print("🐛 SetInput.toGameSet: t1Games=\(t1Games), t2Games=\(t2Games), requiresTiebreak=\(requiresTiebreak)")
-            
-            let t1TB = requiresTiebreak ? Int(team1TiebreakPoints) : nil
-            let t2TB = requiresTiebreak ? Int(team2TiebreakPoints) : nil
+            guard let t1 = Int(team1Games), let t2 = Int(team2Games) else { return nil }
+            guard t1 != t2 && t1 >= 0 && t2 >= 0 && t1 <= 20 && t2 <= 20 else { return nil }
             
             if requiresTiebreak {
-                print("🐛 SetInput.toGameSet: Tiebreak required - t1TB: '\(team1TiebreakPoints)', t2TB: '\(team2TiebreakPoints)'")
-                guard t1TB != nil && t2TB != nil else {
-                    print("🐛 SetInput.toGameSet: Failed to parse tiebreak points")
-                    return nil
-                }
+                guard let tb1 = Int(team1TiebreakPoints), let tb2 = Int(team2TiebreakPoints) else { return nil }
+                return GameSet(team1Games: t1, team2Games: t2, team1TiebreakPoints: tb1, team2TiebreakPoints: tb2)
+            } else {
+                return GameSet(team1Games: t1, team2Games: t2)
             }
-            
-            let gameSet = GameSet(team1Games: t1Games, team2Games: t2Games, 
-                          team1TiebreakPoints: t1TB, team2TiebreakPoints: t2TB)
-            
-            print("🐛 SetInput.toGameSet: Created GameSet - winner: \(gameSet.winnerTeamIndex)")
-            return gameSet
         }
     }
     
@@ -185,15 +131,6 @@ class MatchViewModel: ObservableObject {
         sets.remove(at: index)
     }
     
-    func updateSetTiebreakRequirement(for setIndex: Int) {
-        guard setIndex < sets.count else { return }
-        
-        let set = sets[setIndex]
-        if let t1Games = Int(set.team1Games), let t2Games = Int(set.team2Games) {
-            sets[setIndex].requiresTiebreak = (t1Games == 7 && t2Games == 6) || (t1Games == 6 && t2Games == 7)
-        }
-    }
-    
     func getPlayerSuggestions(for query: String) -> [Player] {
         guard !query.isEmpty else { return availablePlayers }
         
@@ -223,21 +160,25 @@ class MatchViewModel: ObservableObject {
     func validateMatch() -> [String] {
         var errors: [String] = []
         
-        print("🐛 validateMatch: Starting validation...")
-        
-        // Validate players
-        let team1Names = team1PlayersFiltered.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let team2Names = team2PlayersFiltered.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        
-        print("🐛 validateMatch: team1Names=\(team1Names), team2Names=\(team2Names)")
-        print("🐛 validateMatch: maxPlayersPerTeam=\(maxPlayersPerTeam)")
-        
-        if team1Names.count != maxPlayersPerTeam {
-            errors.append("Team 1 needs \(maxPlayersPerTeam) player(s)")
+        // Get actual player names, trimming whitespace
+        let team1Names = team1Players.compactMap { name in
+            let trimmed = name.trimmingCharacters(in: .whitespaces)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        let team2Names = team2Players.compactMap { name in
+            let trimmed = name.trimmingCharacters(in: .whitespaces)
+            return trimmed.isEmpty ? nil : trimmed
         }
         
-        if team2Names.count != maxPlayersPerTeam {
-            errors.append("Team 2 needs \(maxPlayersPerTeam) player(s)")
+        // Check player count based on match type
+        let requiredPlayers = matchType.maxPlayersPerTeam
+        
+        if team1Names.count < requiredPlayers {
+            errors.append("Team 1 needs \(requiredPlayers) player(s)")
+        }
+        
+        if team2Names.count < requiredPlayers {
+            errors.append("Team 2 needs \(requiredPlayers) player(s)")
         }
         
         // Check for duplicate players
@@ -247,41 +188,21 @@ class MatchViewModel: ObservableObject {
             errors.append("Players cannot appear on both teams")
         }
         
-        // Validate sets - be more lenient
-        print("🐛 validateMatch: Checking sets... count=\(sets.count)")
-        for (index, set) in sets.enumerated() {
-            print("🐛 validateMatch: Set \(index): t1='\(set.team1Games)', t2='\(set.team2Games)', isValid=\(set.isValid)")
+        // Check sets - simple validation
+        let validSets = sets.compactMap { setInput -> GameSet? in
+            guard let t1 = Int(setInput.team1Games), let t2 = Int(setInput.team2Games) else {
+                return nil
+            }
+            guard t1 != t2 && t1 >= 0 && t2 >= 0 && t1 <= 20 && t2 <= 20 else {
+                return nil
+            }
+            return GameSet(team1Games: t1, team2Games: t2)
         }
-        
-        let validSets = sets.compactMap { $0.toGameSet() }
-        print("🐛 validateMatch: validSets.count=\(validSets.count)")
         
         if validSets.isEmpty {
             errors.append("At least one valid set is required")
         }
         
-        // Only validate match format if we have multiple sets
-        if validSets.count > 1 && !MatchValidation.validateMatch(sets: validSets) {
-            errors.append("Invalid match format or scores")
-        }
-        
-        // Validate winner - only if we have sets and they're not tied
-        if !validSets.isEmpty {
-            let team1SetsWon = validSets.filter { $0.winnerTeamIndex == 0 }.count
-            let team2SetsWon = validSets.filter { $0.winnerTeamIndex == 1 }.count
-            
-            print("🐛 validateMatch: team1SetsWon=\(team1SetsWon), team2SetsWon=\(team2SetsWon), winnerTeamIndex=\(winnerTeamIndex)")
-            
-            // Only validate winner if there's a clear winner
-            if team1SetsWon != team2SetsWon {
-                let actualWinnerIndex = team1SetsWon > team2SetsWon ? 0 : 1
-                if winnerTeamIndex != actualWinnerIndex {
-                    errors.append("Winner selection doesn't match the scores")
-                }
-            }
-        }
-        
-        print("🐛 validateMatch: Final errors=\(errors)")
         return errors
     }
     
@@ -442,9 +363,6 @@ class MatchViewModel: ObservableObject {
                         self.sets[setIndex].team2TiebreakPoints = newValue
                     }
                 }
-                
-                // Update tiebreak requirement
-                self.updateSetTiebreakRequirement(for: setIndex)
             }
         )
     }

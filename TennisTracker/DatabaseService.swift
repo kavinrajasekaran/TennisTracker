@@ -106,21 +106,19 @@ class DatabaseService: ObservableObject {
             print("🎾 Score: \(match.scoreString)")
             print("🎾 Sets count: \(match.sets.count)")
             
-            // More lenient validation - allow single sets
-            if match.sets.count == 1 {
-                // For single sets, just ensure basic validity
-                let set = match.sets[0]
-                guard set.team1Games != set.team2Games else {
-                    throw DatabaseError.invalidMatchData("Set cannot be tied")
-                }
-                print("🎾 Single set match - bypassing strict validation")
-            } else {
-                // Only validate complete matches with multiple sets
-                guard MatchValidation.validateMatch(sets: match.sets) else {
-                    throw DatabaseError.invalidMatchData("Invalid match score")
-                }
-                print("🎾 Multi-set match validation passed")
+            // Basic validation - just ensure we have data
+            guard !match.teams.isEmpty && !match.sets.isEmpty else {
+                throw DatabaseError.invalidMatchData("Match must have teams and sets")
             }
+            
+            // For any number of sets, just ensure someone won each set
+            for set in match.sets {
+                guard set.team1Games != set.team2Games else {
+                    throw DatabaseError.invalidMatchData("Sets cannot be tied")
+                }
+            }
+            
+            print("🎾 Basic validation passed")
             
             // Save match to Firestore
             let matchData = try Firestore.Encoder().encode(match)
