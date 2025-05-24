@@ -30,6 +30,19 @@ class MatchViewModel: ObservableObject {
     
     init() {
         loadAvailablePlayers()
+        // Set up a simple test match for easier debugging
+        setupQuickTestMatch()
+    }
+    
+    // Helper method to set up a quick test match
+    private func setupQuickTestMatch() {
+        #if DEBUG
+        team1Players[0] = "Player 1"
+        team2Players[0] = "Player 2"
+        sets[0].team1Games = "6"
+        sets[0].team2Games = "4"
+        winnerTeamIndex = 0
+        #endif
     }
     
     // MARK: - Player Field Tracking
