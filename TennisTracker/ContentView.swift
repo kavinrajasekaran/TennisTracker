@@ -320,6 +320,18 @@ struct ContentView: View {
     
     private var actionSection: some View {
         Section {
+            #if DEBUG
+            Button("🐛 Quick Test Setup") {
+                viewModel.team1Players[0] = "Test Player 1"
+                viewModel.team2Players[0] = "Test Player 2"
+                viewModel.sets[0].team1Games = "6"
+                viewModel.sets[0].team2Games = "4"
+                viewModel.winnerTeamIndex = 0
+                viewModel.updateSetTiebreakRequirement(for: 0)
+            }
+            .foregroundColor(.orange)
+            #endif
+            
             Button(action: {
                 Task {
                     await viewModel.saveMatch()
