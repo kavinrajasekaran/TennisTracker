@@ -37,6 +37,12 @@ struct DebugView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(isLoading)
                     
+                    Button("Recalculate Player Stats") {
+                        recalculateStats()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isLoading)
+                    
                     Button("Consolidate Duplicate Players") {
                         consolidatePlayers()
                     }
@@ -155,6 +161,43 @@ struct DebugView: View {
                 
             } catch {
                 addMessage("❌ Player consolidation failed: \(error.localizedDescription)")
+                addMessage("❌ Full error: \(error)")
+            }
+            
+            DispatchQueue.main.async {
+                isLoading = false
+            }
+        }
+    }
+    
+    private func recalculateStats() {
+        isLoading = true
+        addMessage("🔄 Starting player statistics recalculation...")
+        
+        Task {
+            do {
+                // Show current state
+                let players = try await databaseService.fetchPlayers()
+                let matches = try await databaseService.fetchMatches()
+                addMessage("📊 Found \(players.count) players and \(matches.count) matches")
+                
+                for player in players {
+                    addMessage("   • \(player.name): \(player.stats.matchesWon)/\(player.stats.matchesPlayed) matches")
+                }
+                
+                // Perform recalculation
+                try await databaseService.recalculateAllPlayerStats()
+                addMessage("✅ Player statistics recalculation completed")
+                
+                // Show results
+                let updatedPlayers = try await databaseService.fetchPlayers()
+                addMessage("📊 After recalculation:")
+                for player in updatedPlayers {
+                    addMessage("   • \(player.name): \(player.stats.matchesWon)/\(player.stats.matchesPlayed) matches")
+                }
+                
+            } catch {
+                addMessage("❌ Player statistics recalculation failed: \(error.localizedDescription)")
                 addMessage("❌ Full error: \(error)")
             }
             

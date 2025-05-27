@@ -68,7 +68,7 @@ class DatabaseService: ObservableObject {
     }
     
     func createOrUpdatePlayer(name: String) async throws -> Player {
-        print("🏃 Creating/updating player: \(name)")
+        print("🏃 Creating/updating player: '\(name)'")
         
         let userID = try await authenticateUser()
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
@@ -82,15 +82,21 @@ class DatabaseService: ObservableObject {
             try doc.data(as: Player.self)
         }
         
+        print("🏃 Found \(existingPlayers.count) existing players in database")
+        for existingPlayer in existingPlayers {
+            print("   - \(existingPlayer.name) (ID: \(existingPlayer.id))")
+        }
+        
         // Check if player already exists (case-insensitive)
         if let existingPlayer = existingPlayers.first(where: { 
             $0.name.lowercased().trimmingCharacters(in: .whitespaces) == trimmedName.lowercased() 
         }) {
             print("🏃 Found existing player: \(existingPlayer.name) with ID: \(existingPlayer.id)")
+            print("🏃 Current stats: \(existingPlayer.stats.matchesWon)/\(existingPlayer.stats.matchesPlayed) matches")
             return existingPlayer
         }
         
-        print("🏃 Creating new player: \(trimmedName)")
+        print("🏃 Creating new player: '\(trimmedName)'")
         // Create new player with the properly formatted name
         let newPlayer = Player(name: trimmedName)
         
@@ -192,20 +198,38 @@ class DatabaseService: ObservableObject {
             return
         }
         
+        print("🎾 Updating stats for \(allPlayers.count) players")
+        
         for player in allPlayers {
-            var updatedPlayer = player
+            print("🎾 Processing stats for player: \(player.name) (ID: \(player.id))")
+            
+            // Find the current player in the database by name (case-insensitive)
+            let currentPlayers = try await fetchPlayers()
+            guard let currentPlayer = currentPlayers.first(where: { 
+                $0.name.lowercased().trimmingCharacters(in: .whitespaces) == player.name.lowercased().trimmingCharacters(in: .whitespaces)
+            }) else {
+                print("❌ Could not find player \(player.name) in database")
+                continue
+            }
+            
+            print("🎾 Found current player: \(currentPlayer.name) with \(currentPlayer.stats.matchesPlayed) matches played")
+            
+            var updatedPlayer = currentPlayer
             
             // Update match count
             updatedPlayer.stats.matchesPlayed += 1
             
             // Check if player was on winning team
-            let isWinner = match.teams[winnerTeamIndex].players.contains(player)
+            let isWinner = match.teams[winnerTeamIndex].players.contains { $0.name.lowercased() == player.name.lowercased() }
             if isWinner {
                 updatedPlayer.stats.matchesWon += 1
+                print("🎾 Player \(player.name) won this match")
+            } else {
+                print("🎾 Player \(player.name) lost this match")
             }
             
             // Update set statistics
-            let playerTeamIndex = match.teams[0].players.contains(player) ? 0 : 1
+            let playerTeamIndex = match.teams[0].players.contains { $0.name.lowercased() == player.name.lowercased() } ? 0 : 1
             for set in match.sets {
                 if set.winnerTeamIndex == playerTeamIndex {
                     updatedPlayer.stats.setsWon += 1
@@ -218,7 +242,10 @@ class DatabaseService: ObservableObject {
                 }
             }
             
+            print("🎾 Updated stats for \(updatedPlayer.name): \(updatedPlayer.stats.matchesWon)/\(updatedPlayer.stats.matchesPlayed) matches")
+            
             try await savePlayer(updatedPlayer)
+            print("✅ Saved updated player: \(updatedPlayer.name)")
         }
     }
     
@@ -318,6 +345,76 @@ class DatabaseService: ObservableObject {
     }
     
     // MARK: - Data Validation and Cleanup
+    
+    func recalculateAllPlayerStats() async throws {
+        print("🔄 Starting player statistics recalculation...")
+        let userID = try await authenticateUser()
+        
+        // Get all players and matches
+        let players = try await fetchPlayers()
+        let matches = try await fetchMatches()
+        
+        print("📊 Found \(players.count) players and \(matches.count) matches")
+        
+        // Reset all player stats
+        var updatedPlayers: [Player] = []
+        for player in players {
+            var resetPlayer = player
+            resetPlayer.stats = PlayerStats() // Reset to zero
+            updatedPlayers.append(resetPlayer)
+        }
+        
+        // Recalculate stats from all matches
+        for match in matches {
+            guard let winnerTeamIndex = match.winnerTeamIndex else {
+                print("⚠️ Skipping match \(match.id) - no winner specified")
+                continue
+            }
+            
+            let allMatchPlayers = Set(match.teams.flatMap { $0.players })
+            
+            for matchPlayer in allMatchPlayers {
+                // Find the corresponding player in our updated list
+                guard let playerIndex = updatedPlayers.firstIndex(where: { 
+                    $0.name.lowercased().trimmingCharacters(in: .whitespaces) == matchPlayer.name.lowercased().trimmingCharacters(in: .whitespaces)
+                }) else {
+                    print("⚠️ Could not find player \(matchPlayer.name) in player list")
+                    continue
+                }
+                
+                // Update match count
+                updatedPlayers[playerIndex].stats.matchesPlayed += 1
+                
+                // Check if player won
+                let isWinner = match.teams[winnerTeamIndex].players.contains { $0.name.lowercased() == matchPlayer.name.lowercased() }
+                if isWinner {
+                    updatedPlayers[playerIndex].stats.matchesWon += 1
+                }
+                
+                // Update set and game statistics
+                let playerTeamIndex = match.teams[0].players.contains { $0.name.lowercased() == matchPlayer.name.lowercased() } ? 0 : 1
+                for set in match.sets {
+                    if set.winnerTeamIndex == playerTeamIndex {
+                        updatedPlayers[playerIndex].stats.setsWon += 1
+                        updatedPlayers[playerIndex].stats.gamesWon += (playerTeamIndex == 0) ? set.team1Games : set.team2Games
+                        updatedPlayers[playerIndex].stats.gamesLost += (playerTeamIndex == 0) ? set.team2Games : set.team1Games
+                    } else {
+                        updatedPlayers[playerIndex].stats.setsLost += 1
+                        updatedPlayers[playerIndex].stats.gamesWon += (playerTeamIndex == 0) ? set.team1Games : set.team2Games
+                        updatedPlayers[playerIndex].stats.gamesLost += (playerTeamIndex == 0) ? set.team2Games : set.team1Games
+                    }
+                }
+            }
+        }
+        
+        // Save all updated players
+        for player in updatedPlayers {
+            try await savePlayer(player)
+            print("✅ Updated \(player.name): \(player.stats.matchesWon)/\(player.stats.matchesPlayed) matches")
+        }
+        
+        print("✅ Player statistics recalculation completed")
+    }
     
     func consolidateDuplicatePlayers() async throws {
         print("🔄 Starting player consolidation...")

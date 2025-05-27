@@ -167,6 +167,22 @@ class LeaderboardViewModel: ObservableObject {
         }
     }
     
+    func recalculatePlayerStats() {
+        Task {
+            isLoading = true
+            
+            do {
+                try await databaseService.recalculateAllPlayerStats()
+                // Reload data after recalculation
+                loadData()
+                errorMessage = nil
+            } catch {
+                errorMessage = "Failed to recalculate player stats: \(error.localizedDescription)"
+                isLoading = false
+            }
+        }
+    }
+    
     // MARK: - Player Statistics
     
     private func calculateFilteredStats(for player: Player) -> PlayerStats {

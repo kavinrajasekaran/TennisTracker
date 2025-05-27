@@ -42,6 +42,10 @@ struct LeaderboardView: View {
                             viewModel.refreshData()
                         }
                         
+                        Button("Recalculate Player Stats") {
+                            viewModel.recalculatePlayerStats()
+                        }
+                        
                         Button("Consolidate Duplicate Players") {
                             viewModel.consolidateDuplicatePlayers()
                         }
