@@ -151,6 +151,22 @@ class LeaderboardViewModel: ObservableObject {
         loadData()
     }
     
+    func consolidateDuplicatePlayers() {
+        Task {
+            isLoading = true
+            
+            do {
+                try await databaseService.consolidateDuplicatePlayers()
+                // Reload data after consolidation
+                loadData()
+                errorMessage = nil
+            } catch {
+                errorMessage = "Failed to consolidate players: \(error.localizedDescription)"
+                isLoading = false
+            }
+        }
+    }
+    
     // MARK: - Player Statistics
     
     private func calculateFilteredStats(for player: Player) -> PlayerStats {

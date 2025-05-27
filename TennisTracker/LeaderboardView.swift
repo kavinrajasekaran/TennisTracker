@@ -35,6 +35,22 @@ struct LeaderboardView: View {
             }
             .navigationTitle("Leaderboard")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button("Refresh Data") {
+                            viewModel.refreshData()
+                        }
+                        
+                        Button("Consolidate Duplicate Players") {
+                            viewModel.consolidateDuplicatePlayers()
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .disabled(viewModel.isLoading)
+                }
+            }
             .refreshable {
                 viewModel.refreshData()
             }

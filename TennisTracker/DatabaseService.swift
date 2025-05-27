@@ -70,21 +70,37 @@ class DatabaseService: ObservableObject {
     func createOrUpdatePlayer(name: String) async throws -> Player {
         print("🏃 Creating/updating player: \(name)")
         
-        // First check if player already exists
-        if let existingPlayer = try await findPlayer(by: name) {
-            print("🏃 Found existing player: \(existingPlayer.name)")
+        let userID = try await authenticateUser()
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        
+        // Search for existing player by name (case-insensitive)
+        let snapshot = try await db.collection("users").document(userID)
+            .collection("players")
+            .getDocuments()
+        
+        let existingPlayers = try snapshot.documents.compactMap { doc in
+            try doc.data(as: Player.self)
+        }
+        
+        // Check if player already exists (case-insensitive)
+        if let existingPlayer = existingPlayers.first(where: { 
+            $0.name.lowercased().trimmingCharacters(in: .whitespaces) == trimmedName.lowercased() 
+        }) {
+            print("🏃 Found existing player: \(existingPlayer.name) with ID: \(existingPlayer.id)")
             return existingPlayer
         }
         
-        print("🏃 Creating new player: \(name)")
-        // Create new player
-        let newPlayer = Player(name: name)
+        print("🏃 Creating new player: \(trimmedName)")
+        // Create new player with the properly formatted name
+        let newPlayer = Player(name: trimmedName)
         
         do {
             let playerData = try Firestore.Encoder().encode(newPlayer)
             print("🏃 Encoded player data successfully")
             
-            try await db.collection("players").document(newPlayer.id).setData(playerData)
+            try await db.collection("users").document(userID)
+                .collection("players").document(newPlayer.id)
+                .setData(playerData)
             print("🏃 Player saved to Firestore: \(newPlayer.id)")
             
             return newPlayer
@@ -303,6 +319,95 @@ class DatabaseService: ObservableObject {
     
     // MARK: - Data Validation and Cleanup
     
+    func consolidateDuplicatePlayers() async throws {
+        print("🔄 Starting player consolidation...")
+        let userID = try await authenticateUser()
+        let players = try await fetchPlayers()
+        
+        // Group players by name (case-insensitive)
+        let playerGroups = Dictionary(grouping: players) { player in
+            player.name.lowercased().trimmingCharacters(in: .whitespaces)
+        }
+        
+        for (normalizedName, duplicatePlayers) in playerGroups {
+            guard duplicatePlayers.count > 1 else { continue }
+            
+            print("🔄 Found \(duplicatePlayers.count) duplicate players for name: \(normalizedName)")
+            
+            // Keep the first player (or the one with most matches) as the primary
+            let primaryPlayer = duplicatePlayers.max { p1, p2 in
+                p1.stats.matchesPlayed < p2.stats.matchesPlayed
+            } ?? duplicatePlayers[0]
+            
+            let duplicatePlayerIds = duplicatePlayers.filter { $0.id != primaryPlayer.id }.map { $0.id }
+            
+            // Merge statistics from all duplicates into the primary player
+            var mergedStats = primaryPlayer.stats
+            for duplicate in duplicatePlayers where duplicate.id != primaryPlayer.id {
+                mergedStats.matchesPlayed += duplicate.stats.matchesPlayed
+                mergedStats.matchesWon += duplicate.stats.matchesWon
+                mergedStats.setsWon += duplicate.stats.setsWon
+                mergedStats.setsLost += duplicate.stats.setsLost
+                mergedStats.gamesWon += duplicate.stats.gamesWon
+                mergedStats.gamesLost += duplicate.stats.gamesLost
+            }
+            
+            // Update the primary player with merged stats and proper name formatting
+            var updatedPrimaryPlayer = primaryPlayer
+            updatedPrimaryPlayer.stats = mergedStats
+            
+            try await savePlayer(updatedPrimaryPlayer)
+            
+            // Update all matches to use the primary player ID
+            try await updateMatchesWithConsolidatedPlayer(
+                primaryPlayer: updatedPrimaryPlayer,
+                duplicatePlayerIds: duplicatePlayerIds
+            )
+            
+            // Delete duplicate player records
+            for duplicateId in duplicatePlayerIds {
+                try await db.collection("users").document(userID)
+                    .collection("players").document(duplicateId)
+                    .delete()
+                print("🗑️ Deleted duplicate player: \(duplicateId)")
+            }
+        }
+        
+        print("✅ Player consolidation completed")
+    }
+    
+    private func updateMatchesWithConsolidatedPlayer(primaryPlayer: Player, duplicatePlayerIds: [String]) async throws {
+        let matches = try await fetchMatches()
+        
+        for match in matches {
+            var needsUpdate = false
+            var updatedMatch = match
+            
+            // Update teams to replace duplicate player references
+            for (teamIndex, team) in match.teams.enumerated() {
+                var updatedPlayers = team.players
+                
+                for (playerIndex, player) in team.players.enumerated() {
+                    if duplicatePlayerIds.contains(player.id) {
+                        updatedPlayers[playerIndex] = primaryPlayer
+                        needsUpdate = true
+                        print("🔄 Updated match \(match.id) to use consolidated player")
+                    }
+                }
+                
+                if needsUpdate {
+                    updatedMatch.teams[teamIndex] = Team(players: updatedPlayers)
+                }
+            }
+            
+            // Save updated match if changes were made
+            if needsUpdate {
+                let matchData = try Firestore.Encoder().encode(updatedMatch)
+                try await db.collection("matches").document(match.id).setData(matchData)
+            }
+        }
+    }
+    
     func detectDuplicateMatches() async throws -> [(Match, Match)] {
         let matches = try await fetchMatches()
         var duplicates: [(Match, Match)] = []
@@ -328,29 +433,7 @@ class DatabaseService: ObservableObject {
         return duplicates
     }
     
-    func findPlayer(by name: String) async throws -> Player? {
-        print("🔍 Searching for player: \(name)")
-        
-        do {
-            let querySnapshot = try await db.collection("players")
-                .whereField("name", isEqualTo: name)
-                .limit(to: 1)
-                .getDocuments()
-            
-            if let document = querySnapshot.documents.first {
-                print("🔍 Found player document: \(document.documentID)")
-                let player = try document.data(as: Player.self)
-                print("🔍 Decoded player: \(player.name)")
-                return player
-            } else {
-                print("🔍 No player found with name: \(name)")
-                return nil
-            }
-        } catch {
-            print("❌ Error searching for player: \(error)")
-            throw error
-        }
-    }
+
 }
 
 // MARK: - Error Types

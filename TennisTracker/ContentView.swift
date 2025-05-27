@@ -158,7 +158,32 @@ struct ContentView: View {
                     .foregroundColor(.blue)
             }
             
-            winnerSelection
+            // Show calculated winner
+            if let winnerIndex = viewModel.calculatedWinnerTeamIndex {
+                let winnerTeamPlayers = winnerIndex == 0 ? viewModel.team1PlayersFiltered : viewModel.team2PlayersFiltered
+                let winnerNames = winnerTeamPlayers.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+                
+                HStack {
+                    Text("Match Winner:")
+                        .font(.headline)
+                    Spacer()
+                    VStack(alignment: .trailing) {
+                        Text("Team \(winnerIndex + 1)")
+                            .font(.headline)
+                            .foregroundColor(.green)
+                        if !winnerNames.isEmpty {
+                            Text(winnerNames.joined(separator: " / "))
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.green.opacity(0.1))
+                )
+            }
             
         } header: {
             HStack {
@@ -260,18 +285,7 @@ struct ContentView: View {
         )
     }
     
-    private var winnerSelection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Winner")
-                .font(.headline)
-            
-            Picker("Winner", selection: $viewModel.winnerTeamIndex) {
-                Text("Team 1").tag(0)
-                Text("Team 2").tag(1)
-            }
-            .pickerStyle(SegmentedPickerStyle())
-        }
-    }
+
     
     // MARK: - Additional Info Section
     
@@ -290,23 +304,6 @@ struct ContentView: View {
     
     private var validationSection: some View {
         Group {
-            // Debug validation info
-            Section("Validation Status") {
-                Text(viewModel.validationDebugInfo)
-                    .font(.caption)
-                    .foregroundColor(viewModel.isMatchValid ? .green : .red)
-            }
-            
-            if !viewModel.validationErrors.isEmpty {
-                Section("Validation Errors") {
-                    ForEach(viewModel.validationErrors, id: \.self) { error in
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundColor(.red)
-                            .font(.caption)
-                    }
-                }
-            }
-            
             if !viewModel.statusMessage.isEmpty {
                 Section {
                     Label(viewModel.statusMessage, systemImage: viewModel.showingSuccess ? "checkmark.circle.fill" : "info.circle.fill")
@@ -322,7 +319,6 @@ struct ContentView: View {
         Section {
             #if DEBUG
             Button("🐛 Quick Test Setup") {
-                viewModel.validationErrors = []
                 viewModel.statusMessage = ""
                 viewModel.matchType = .singles
                 viewModel.team1Players = ["Test Player 1", ""]
@@ -330,7 +326,6 @@ struct ContentView: View {
                 viewModel.sets = [MatchViewModel.SetInput()]
                 viewModel.sets[0].team1Games = "6"
                 viewModel.sets[0].team2Games = "4"
-                viewModel.winnerTeamIndex = 0
             }
             .foregroundColor(.orange)
             #endif

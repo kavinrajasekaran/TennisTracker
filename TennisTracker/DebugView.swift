@@ -37,6 +37,12 @@ struct DebugView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(isLoading)
                     
+                    Button("Consolidate Duplicate Players") {
+                        consolidatePlayers()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isLoading)
+                    
                     Button("Clear Log") {
                         debugMessages.removeAll()
                     }
@@ -108,6 +114,47 @@ struct DebugView: View {
                 
             } catch {
                 addMessage("❌ Simple save failed: \(error.localizedDescription)")
+                addMessage("❌ Full error: \(error)")
+            }
+            
+            DispatchQueue.main.async {
+                isLoading = false
+            }
+        }
+    }
+    
+    private func consolidatePlayers() {
+        isLoading = true
+        addMessage("🔄 Starting player consolidation...")
+        
+        Task {
+            do {
+                // First, show current players
+                let players = try await databaseService.fetchPlayers()
+                addMessage("📊 Found \(players.count) total players")
+                
+                // Group by name to show duplicates
+                let playerGroups = Dictionary(grouping: players) { player in
+                    player.name.lowercased().trimmingCharacters(in: .whitespaces)
+                }
+                
+                let duplicateGroups = playerGroups.filter { $0.value.count > 1 }
+                addMessage("🔍 Found \(duplicateGroups.count) groups with duplicates")
+                
+                for (name, duplicates) in duplicateGroups {
+                    addMessage("   • '\(name)': \(duplicates.count) duplicates")
+                }
+                
+                // Perform consolidation
+                try await databaseService.consolidateDuplicatePlayers()
+                addMessage("✅ Player consolidation completed")
+                
+                // Show results
+                let updatedPlayers = try await databaseService.fetchPlayers()
+                addMessage("📊 After consolidation: \(updatedPlayers.count) players")
+                
+            } catch {
+                addMessage("❌ Player consolidation failed: \(error.localizedDescription)")
                 addMessage("❌ Full error: \(error)")
             }
             

@@ -49,7 +49,7 @@ struct Match: Identifiable, Codable {
     let id: String
     let userID: String
     let matchType: MatchType
-    let teams: [Team]
+    var teams: [Team]
     let sets: [GameSet]
     let winnerTeamIndex: Int?
     let timestamp: Date

@@ -18,13 +18,11 @@ class MatchViewModel: ObservableObject {
     
     // Sets and Scoring
     @Published var sets: [SetInput] = [SetInput()]
-    @Published var winnerTeamIndex: Int = 0
     
     // UI State
     @Published var isLoading = false
     @Published var statusMessage: String = ""
     @Published var showingSuccess = false
-    @Published var validationErrors: [String] = []
     
     private let databaseService = DatabaseService.shared
     
@@ -92,23 +90,35 @@ class MatchViewModel: ObservableObject {
         sets.count < 5 && !sets.isEmpty && sets.last?.isValid == true
     }
     
-    var isMatchValid: Bool {
-        let errors = validateMatch()
-        // Debug: print validation errors
-        if !errors.isEmpty {
-            print("🐛 Match validation errors: \(errors)")
+    // Automatically determine winner based on sets
+    var calculatedWinnerTeamIndex: Int? {
+        let validSets = sets.compactMap { $0.toGameSet() }
+        guard !validSets.isEmpty else { return nil }
+        
+        let team1SetsWon = validSets.filter { $0.winnerTeamIndex == 0 }.count
+        let team2SetsWon = validSets.filter { $0.winnerTeamIndex == 1 }.count
+        
+        // For single set matches, return the winner of that set
+        if validSets.count == 1 {
+            return validSets[0].winnerTeamIndex
         }
-        return errors.isEmpty
+        
+        // For multiple sets, check if someone has won the majority
+        let requiredSetsToWin = validSets.count <= 3 ? 2 : 3
+        
+        if team1SetsWon >= requiredSetsToWin {
+            return 0
+        } else if team2SetsWon >= requiredSetsToWin {
+            return 1
+        }
+        
+        // If no clear winner yet, return nil
+        return nil
     }
     
-    // Debug helper to show current validation status
-    var validationDebugInfo: String {
+    var isMatchValid: Bool {
         let errors = validateMatch()
-        if errors.isEmpty {
-            return "✅ Match is valid"
-        } else {
-            return "❌ Validation errors:\n" + errors.joined(separator: "\n")
-        }
+        return errors.isEmpty
     }
     
     // MARK: - Actions
@@ -134,9 +144,11 @@ class MatchViewModel: ObservableObject {
     func getPlayerSuggestions(for query: String) -> [Player] {
         guard !query.isEmpty else { return availablePlayers }
         
+        let trimmedQuery = query.trimmingCharacters(in: .whitespaces).lowercased()
+        
         return availablePlayers.filter { player in
-            player.name.lowercased().contains(query.lowercased())
-        }.sorted { $0.name < $1.name }
+            player.name.lowercased().contains(trimmedQuery)
+        }.sorted { $0.name.lowercased() < $1.name.lowercased() }
     }
     
     func selectPlayer(_ player: Player, for field: PlayerField) {
@@ -161,11 +173,11 @@ class MatchViewModel: ObservableObject {
         var errors: [String] = []
         
         // Get actual player names, trimming whitespace
-        let team1Names = team1Players.compactMap { name in
+        let team1Names = team1PlayersFiltered.compactMap { name in
             let trimmed = name.trimmingCharacters(in: .whitespaces)
             return trimmed.isEmpty ? nil : trimmed
         }
-        let team2Names = team2Players.compactMap { name in
+        let team2Names = team2PlayersFiltered.compactMap { name in
             let trimmed = name.trimmingCharacters(in: .whitespaces)
             return trimmed.isEmpty ? nil : trimmed
         }
@@ -188,19 +200,16 @@ class MatchViewModel: ObservableObject {
             errors.append("Players cannot appear on both teams")
         }
         
-        // Check sets - simple validation
-        let validSets = sets.compactMap { setInput -> GameSet? in
-            guard let t1 = Int(setInput.team1Games), let t2 = Int(setInput.team2Games) else {
-                return nil
-            }
-            guard t1 != t2 && t1 >= 0 && t2 >= 0 && t1 <= 20 && t2 <= 20 else {
-                return nil
-            }
-            return GameSet(team1Games: t1, team2Games: t2)
-        }
+        // Check sets - ensure we have at least one valid set
+        let validSets = sets.compactMap { $0.toGameSet() }
         
         if validSets.isEmpty {
             errors.append("At least one valid set is required")
+        }
+        
+        // For multiple sets, ensure the match is complete (someone has won)
+        if validSets.count > 1 && calculatedWinnerTeamIndex == nil {
+            errors.append("Match is incomplete - no clear winner")
         }
         
         return errors
@@ -211,11 +220,11 @@ class MatchViewModel: ObservableObject {
     func saveMatch() async {
         print("🎾 MatchViewModel: Starting save match process...")
         isLoading = true
-        validationErrors = validateMatch()
         
-        if !validationErrors.isEmpty {
-            print("❌ MatchViewModel: Validation errors found: \(validationErrors)")
-            statusMessage = "Please fix the errors above"
+        let errors = validateMatch()
+        if !errors.isEmpty {
+            print("❌ MatchViewModel: Validation errors found: \(errors)")
+            statusMessage = "Please check your match details: \(errors.first ?? "Invalid data")"
             isLoading = false
             return
         }
@@ -243,13 +252,13 @@ class MatchViewModel: ObservableObject {
             }
             
             print("🎾 MatchViewModel: Creating match object...")
-            // Create match
+            // Create match with calculated winner
             let match = Match(
                 userID: userID,
                 matchType: matchType,
                 teams: [team1, team2],
                 sets: gameSets,
-                winnerTeamIndex: winnerTeamIndex,
+                winnerTeamIndex: calculatedWinnerTeamIndex,
                 location: location.isEmpty ? nil : location,
                 surface: courtSurface,
                 notes: notes.isEmpty ? nil : notes
@@ -299,13 +308,11 @@ class MatchViewModel: ObservableObject {
         team1Players = ["", ""]
         team2Players = ["", ""]
         sets = [SetInput()]
-        winnerTeamIndex = 0
         location = ""
         notes = ""
         courtSurface = .hard
         matchType = .singles
         statusMessage = ""
-        validationErrors = []
         showingSuccess = false
     }
     
